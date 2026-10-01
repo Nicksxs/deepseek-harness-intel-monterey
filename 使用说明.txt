@@ -1,0 +1,49 @@
+DeepSeek Harness Intel Mac / macOS Monterey 源码适配包
+
+目标：Intel MacBook Pro，macOS 12.6.6 (21G646)。
+这是小体积下载启动包，不是可以直接安装的 DMG。它从官方 GitHub 下载固定版本源码，校验 SHA256，应用附带补丁，再编译启动。尚未完成 macOS 实机启动验收。
+
+修改内容
+1. 桌面 Electron 固定为 43.7.7。Electron 44 已停止支持 macOS 12。
+2. 仅 mac-x64 的独立 Node 运行环境固定为 22.23.3，使用官方 SHA256 校验；其他平台保留原版本。
+3. 修复生成的 Harness Dev.app 从 Finder 冷启动时丢失主运行环境目录的问题。
+4. 添加中文启动脚本，先检查平台和工具，再安装项目依赖并编译启动。
+这是面向 Monterey 的源码变体，Electron 版本固定对本源码副本的所有桌面构建生效。
+
+准备（需要你在 Mac 上完成；启动脚本不会自动安装系统工具）
+- x64 Node.js 22.23.3 完整发行版，需包含 include/node/node_api.h：
+  https://nodejs.org/dist/v22.23.3/
+  选择 node-v22.23.3-darwin-x64.tar.gz，或官方对应 macOS 安装包；不要用 Node 24。
+- pnpm 11.7.0。安装 Node 后可自行运行 npm install -g pnpm@11.7.0
+- Xcode Command Line Tools：终端执行 xcode-select --install，然后完成系统安装提示。
+- 可用网络和足够磁盘空间；首次下载依赖和编译可能较久。
+
+使用
+1. 完整解压本 ZIP，把解压后的文件夹放在准备长期保留的位置。
+2. 在“终端”执行 cd 后拖入这个文件夹，再回车。
+3. 执行 bash ./Setup-Intel-Monterey.command
+   也可双击 Setup-Intel-Monterey.command；若 Finder 的 PATH 找不到已安装工具，请改用终端方式。
+4. 启动器下载约32MB官方源码、校验后应用补丁，生成 deepseek-harness-intel 子目录，再下载依赖并编译打开客户端。
+5. 后续启动执行 bash ./deepseek-harness-intel/Start-Intel-Monterey.command；已成功构建后，也可打开该源码目录下 apps/desktop/.desktop-build/development/Harness Dev.app。
+6. 若编译失败，请保留终端完整错误输出。已有源码目录不会被覆盖。后续无需再次运行 Setup。
+7. .app 依赖源码目录、node_modules 和生成的运行环境；请勿单独复制.app，或移动/删除源码目录。
+8. 首次使用在界面中配置账号或 API Key，请勿把密钥写进本包。
+
+固定源码版本：639ed015397290b3745d163aafe02ffee4aa3f84
+下载地址：https://github.com/deepseek-ai/deepseek-harness/archive/639ed015397290b3745d163aafe02ffee4aa3f84.tar.gz
+源码压缩包SHA256：bbc09e888e1df3aa37be049abdb7720951e76442d21e5432365d87a465d628f1
+如果官方重新生成归档导致校验失败，启动器会停止；不要跳过校验。
+
+这是上游开发模式桌面程序，保留本机开发调试端口，适合个人试用；不是已公证的生产发行版。不会上传或发布项目。上游正式打包要求 macOS 构建机及签名/更新服务配置，本包没有删除那些保护，也没有关闭 Gatekeeper。
+
+验证边界
+- 已在 Linux 执行针对运行环境版本、Intel 打包目标和 Finder 冷启动变量的单元测试。
+- macOS 12.6.6 下 Electron UI、原生插件、Python、LibreOffice 运行、签名和安装仍待实机验收。
+- 具体通过/受阻的检查见 VERIFICATION.txt。
+- Electron 43 为兼容旧系统而固定，不能无限期依赖旧运行时。应跟踪该分支安全更新；升级系统后应回到受支持的新版客户端。
+
+参考
+https://www.electronjs.org/blog/electron-44-0
+https://nodejs.org/en/blog/migrations/v22-to-v24
+https://github.com/nodejs/node/blob/v22.x/BUILDING.md
+https://github.com/deepseek-ai/deepseek-harness

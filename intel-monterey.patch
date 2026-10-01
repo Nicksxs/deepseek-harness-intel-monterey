@@ -1,0 +1,304 @@
+diff --git a/apps/desktop/README.i18n.yaml b/apps/desktop/README.i18n.yaml
+index f412464..f304224 100644
+--- a/apps/desktop/README.i18n.yaml
++++ b/apps/desktop/README.i18n.yaml
+@@ -69,8 +69,8 @@
+   en: bc50fd8a4d96c227
+   zh: fb0a6ce80c31cda6
+ /deepseek-harness-desktop/low-level-development-overrides:
+-  en: 0b225f914142ef0b
+-  zh: 9ffd07768d37824e
++  en: fa3b7e058d40abe3
++  zh: a3f895a0db52d00d
+ /deepseek-harness-desktop/known-limitations:
+   en: 5b77213c86bbcfb6
+   zh: b34bf21773bb852b
+diff --git a/apps/desktop/README.md b/apps/desktop/README.md
+index fa00c27..b6d754b 100644
+--- a/apps/desktop/README.md
++++ b/apps/desktop/README.md
+@@ -457,6 +457,8 @@ The downloaded bytes are inert, and the installation call is recorded rather tha
+ 
+ ## Low-level development overrides
+ 
++This Intel Monterey source variant pins Electron 43.7.7 and the mac-x64 primary Node runtime to 22.23.3. Electron 44 requires macOS 13; the standalone Node 24 build requires macOS 13.5. Run `Start-Intel-Monterey.command` from the checkout after installing x64 Node 22.19 or later in the 22.x line, pnpm 11.7.0, and Xcode Command Line Tools. It builds a source-linked `Harness Dev.app`; keep the checkout, dependencies, and prepared runtime in place. Finder cold starts retain the primary-runtime directory. This is not a standalone signed/notarized installer, and requires qualification on macOS 12.6.6 before compatibility can be claimed.
++
+ An unpackaged Electron process uses `.desktop-build/development/project` under its application directory as its development project. `DSH_DESKTOP_PNPM_ENTRY` and `DSH_DESKTOP_DSH_DIR` are optional overrides with application-path defaults. `DSH_DESKTOP_PRIMARY_RUNTIME_DIR` is required for every unpackaged launch: the development launchers (`dev:desktop`, `start:desktop`, and the workspace-update qualification runner) set it to the primary-runtime directory of the target they prepared, and a launch without it fails with the fatal startup dialog. The launcher must set it because the shell cannot derive that directory from `process.arch`: the build target fixes Windows to x64 while the host may be arm64. Packaged applications ignore these variables, resolve signed resources from `process.resourcesPath`, and use the managed Desktop profile.
+ 
+ ## Known limitations
+diff --git a/apps/desktop/README.zh.md b/apps/desktop/README.zh.md
+index 61caaf0..9a9cf01 100644
+--- a/apps/desktop/README.zh.md
++++ b/apps/desktop/README.zh.md
+@@ -459,6 +459,8 @@ node apps/desktop/node_modules/pnpm/bin/pnpm.mjs --dir apps/desktop run test:upd
+ 
+ ## 底层开发覆盖项
+ 
++此 Intel Monterey 源码变体固定使用 Electron 43.7.7，并将 mac-x64 主运行环境中的 Node 固定为 22.23.3。Electron 44 要求 macOS 13，独立 Node 24 发行版要求 macOS 13.5。安装 x64 Node 22.19 或更新的 22.x、pnpm 11.7.0 和 Xcode Command Line Tools 后，在源码目录运行 `Start-Intel-Monterey.command`。它构建依赖源码的 `Harness Dev.app`；请保留源码、依赖及已准备的运行环境。Finder 冷启动会保留主运行环境目录。这不是独立的已签名、公证安装包，仍须在 macOS 12.6.6 实机验证，才能确认兼容性。
++
+ 未打包的 Electron 进程使用应用目录下的 `.desktop-build/development/project` 作为开发项目。`DSH_DESKTOP_PNPM_ENTRY` 和 `DSH_DESKTOP_DSH_DIR` 是带应用路径默认值的可选覆盖项。每次未打包启动都必须设置 `DSH_DESKTOP_PRIMARY_RUNTIME_DIR`：开发启动器（`dev:desktop`、`start:desktop` 及工作区更新验证运行器）会把它设置为自己已准备目标的 primary-runtime 目录；缺少该变量的启动会以致命启动对话框失败。启动器必须设置它，因为壳无法从 `process.arch` 推导该目录：构建目标将 Windows 固定为 x64，而宿主可能是 arm64。打包应用会忽略这些变量，从 `process.resourcesPath` 解析签名资源，并使用受管 Desktop profile。
+ 
+ ## 已知限制
+diff --git a/apps/desktop/package.json b/apps/desktop/package.json
+index 3eaf57f..b9817d8 100644
+--- a/apps/desktop/package.json
++++ b/apps/desktop/package.json
+@@ -60,7 +60,7 @@
+     "@types/semver": "^7.8.0",
+     "app-builder-lib": "26.15.3",
+     "cos-nodejs-sdk-v5": "3.0.0",
+-    "electron": "^44.0.0",
++    "electron": "43.7.7",
+     "electron-builder": "^26.15.3",
+     "extract-zip": "^2.0.1",
+     "js-yaml": "^4.2.0",
+diff --git a/apps/desktop/scripts/dev.ts b/apps/desktop/scripts/dev.ts
+index 1ae2f3e..b911d36 100644
+--- a/apps/desktop/scripts/dev.ts
++++ b/apps/desktop/scripts/dev.ts
+@@ -78,7 +78,8 @@ async function launchElectron(): Promise<void> {
+   console.log(`desktop development: inspectors main=${String(mainPort)}, renderer=${String(rendererPort)}, host=${String(hostPort)}`)
+   if (process.platform === 'darwin') {
+     const executable = prepareDevelopmentApp({ electron, appRoot: APP_ROOT, directory: DEVELOPMENT_ROOT, home, userData,
+-      mainPort, rendererPort, hostPort, openDevtools: environment.DSH_DESKTOP_OPEN_DEVTOOLS! })
++      mainPort, rendererPort, hostPort, openDevtools: environment.DSH_DESKTOP_OPEN_DEVTOOLS!,
++      primaryRuntimeDirectory: environment.DSH_DESKTOP_PRIMARY_RUNTIME_DIR! })
+     await run(executable, [], APP_ROOT, environment)
+     return
+   }
+diff --git a/apps/desktop/scripts/development-app.ts b/apps/desktop/scripts/development-app.ts
+index ff09b8b..88f4e28 100644
+--- a/apps/desktop/scripts/development-app.ts
++++ b/apps/desktop/scripts/development-app.ts
+@@ -15,6 +15,7 @@ export interface DevelopmentAppOptions {
+   readonly rendererPort: number
+   readonly hostPort: number
+   readonly openDevtools: string
++  readonly primaryRuntimeDirectory: string
+ }
+ 
+ function quote(value: string): string { return `'${value.replaceAll("'", "'\\''")}'` }
+@@ -62,6 +63,7 @@ export function prepareDevelopmentApp(options: DevelopmentAppOptions): string {
+ export function developmentLauncher(options: DevelopmentAppOptions, bundle: string): string {
+   const environment = {
+     DSH_HOME: options.home,
++    DSH_DESKTOP_PRIMARY_RUNTIME_DIR: options.primaryRuntimeDirectory,
+     DSH_DESKTOP_DEV_APP: '1',
+     DSH_DESKTOP_HOST_INSPECT_PORT: String(options.hostPort),
+     DSH_DESKTOP_OPEN_DEVTOOLS: options.openDevtools,
+diff --git a/apps/desktop/tests/development-app.spec.ts b/apps/desktop/tests/development-app.spec.ts
+index 2f718b7..dfebeb3 100644
+--- a/apps/desktop/tests/development-app.spec.ts
++++ b/apps/desktop/tests/development-app.spec.ts
+@@ -12,12 +12,12 @@ it.skipIf(process.platform === 'win32')('passes literal workspace paths and cold
+   const bundle = join(root, "Harness ' $(false).app")
+   const binary = join(bundle, 'Contents', 'MacOS', 'Electron')
+   mkdirSync(join(bundle, 'Contents', 'MacOS'), { recursive: true })
+-  writeFileSync(binary, '#!/bin/sh\nprintf "%s\\n" "$DSH_HOME" "$DSH_DESKTOP_DEV_APP" "$DSH_DESKTOP_OPEN_DEVTOOLS" "$@"\n', { mode: 0o755 })
++  writeFileSync(binary, '#!/bin/sh\nprintf "%s\\n" "$DSH_HOME" "$DSH_DESKTOP_PRIMARY_RUNTIME_DIR" "$DSH_DESKTOP_DEV_APP" "$DSH_DESKTOP_OPEN_DEVTOOLS" "$@"\n', { mode: 0o755 })
+   const launcher = join(root, 'launcher')
+   const home = join(root, "home ' $(false)")
+   writeFileSync(launcher, developmentLauncher({ electron: binary, appRoot: root, directory: root,
+-    home, userData: join(root, 'browser data'), mainPort: 9229, rendererPort: 9222, hostPort: 9230, openDevtools: '0' }, bundle))
++    home, userData: join(root, 'browser data'), mainPort: 9229, rendererPort: 9222, hostPort: 9230, openDevtools: '0', primaryRuntimeDirectory: join(root, "runtime ' $(false)") }, bundle))
+   const result = execFileSync('/bin/sh', [launcher, '--test-launch-argument'], { encoding: 'utf8' })
+-  expect(result.trimEnd().split('\n')).toEqual([home, '1', '0', '--inspect=127.0.0.1:9229',
++  expect(result.trimEnd().split('\n')).toEqual([home, join(root, "runtime ' $(false)"), '1', '0', '--inspect=127.0.0.1:9229',
+     '--remote-debugging-port=9222', `--user-data-dir=${join(root, 'browser data')}`, root, '--test-launch-argument'])
+ })
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 6c7ce04..15e4621 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -655,8 +655,8 @@ importers:
+         specifier: 3.0.0
+         version: 3.0.0
+       electron:
+-        specifier: ^44.0.0
+-        version: 44.0.0
++        specifier: 43.7.7
++        version: 43.7.7
+       electron-builder:
+         specifier: ^26.15.3
+         version: 26.15.3(electron-builder-squirrel-windows@26.15.3)
+@@ -18809,8 +18809,8 @@ packages:
+     resolution: {integrity: sha512-bO3y10YikuUwUuDUQRM4KfwNkKhnpVO7IPdbsrejwN9/AABJzzTQ4GeHwyzNSrVO+tEH3/Np255a3sVZpZDjvg==}
+     engines: {node: '>=8.0.0'}
+ 
+-  electron@44.0.0:
+-    resolution: {integrity: sha512-FkTqPrFPZYljdPI5b7KORGsJTd6FgUQDefl5MrU3Xz9R87pAj9JLreIjDqcRN8hJIkFHIou0o8kKzvcpT9qiRQ==}
++  electron@43.7.7:
++    resolution: {integrity: sha512-y0pg+KhWLAkW2Ts2njkFFNFl3KtB1FmbUp9Te9i+R2Og2v1fcI/I6MADJ7jvnzB5UKdt+U+0EUoCnVL79xMPMA==}
+     engines: {node: '>= 22.12.0'}
+     hasBin: true
+ 
+@@ -26068,7 +26068,7 @@ snapshots:
+     transitivePeerDependencies:
+       - supports-color
+ 
+-  electron@44.0.0:
++  electron@43.7.7:
+     dependencies:
+       '@electron-internal/extract-zip': 1.0.5
+       '@electron/get': 5.1.0(supports-color@9.4.0)
+diff --git a/pnpm-workspace.yaml b/pnpm-workspace.yaml
+index b9cf05a..02a7e91 100644
+--- a/pnpm-workspace.yaml
++++ b/pnpm-workspace.yaml
+@@ -97,6 +97,7 @@ minimumReleaseAgeExclude:
+   - '@trycua/cua-driver-win32-arm64-msvc@0.28.0'
+   - '@trycua/cua-driver-win32-x64-msvc@0.28.0'
+   - '@trycua/cua-driver@0.28.0'
++  - electron@43.7.7
+ patchedDependencies:
+   '@earendil-works/pi-ai@0.87.1': patches/@earendil-works__pi-ai@0.87.1.patch
+   '@electron/osx-sign@1.3.3': patches/@electron__osx-sign@1.3.3.patch
+diff --git a/scripts/primary-runtime/lock.json b/scripts/primary-runtime/lock.json
+index f5b0ada..d2ea608 100644
+--- a/scripts/primary-runtime/lock.json
++++ b/scripts/primary-runtime/lock.json
+@@ -53,7 +53,7 @@
+     },
+     "mac-x64": {
+       "nodeArchive": "darwin-x64.tar.gz",
+-      "nodeSha256": "1462cb3b3046b815cf8ea436d3da450ec1a9f11dac7e5a46b0ada5305d7e8097",
++      "nodeSha256": "8a677b0219178efd6eb0e475457c4afb452b521a92f6e67845a73bd85727f2a8",
+       "pythonTarget": "x86_64-apple-darwin",
+       "pythonSha256": "65b195c9cedc1fef6767f044f9822069adbd1bd9204d424ece4628776fdc04bb",
+       "wheels": [
+@@ -73,7 +73,8 @@
+           "url": "https://files.pythonhosted.org/packages/a8/25/070c92013a1c029a602b03560d68772313d918268667fa993da7961759c9/lxml-6.1.3-cp312-cp312-macosx_10_13_x86_64.whl",
+           "sha256": "623c8799c17128753c65699f1c3aa32402657393a9ad6db09ed8b98ddf76611d"
+         }
+-      ]
++      ],
++      "nodeVersion": "22.23.3"
+     },
+     "linux-x64": {
+       "nodeArchive": "linux-x64.tar.gz",
+diff --git a/scripts/primary-runtime/prepare.spec.ts b/scripts/primary-runtime/prepare.spec.ts
+index 6f41ac4..679cfb3 100644
+--- a/scripts/primary-runtime/prepare.spec.ts
++++ b/scripts/primary-runtime/prepare.spec.ts
+@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
+ import { basename, join } from 'node:path'
+ import { zipSync } from 'fflate'
+ import { expect, it } from 'vitest'
+-import { downloadPrimaryRuntimeAsset, prepareOfficeSkillAssets, primaryRuntimePayloadDigest, smokePrimaryRuntime, unpackPrimaryRuntimeWheel } from './prepare.ts'
++import { downloadPrimaryRuntimeAsset, prepareOfficeSkillAssets, primaryRuntimeNodeVersion, primaryRuntimePayloadDigest, smokePrimaryRuntime, unpackPrimaryRuntimeWheel } from './prepare.ts'
+ import lock from './lock.json' with { type: 'json' }
+ 
+ it('covers every SDK wheel target with the shared interpreter lock', () => {
+@@ -152,3 +152,19 @@ it('keeps carrier pnpm versions aligned with the shared payload build', () => {
+   expect(desktop.devDependencies.pnpm).toBe(root.devDependencies.pnpm)
+   expect(root.packageManager).toBe(`pnpm@${root.devDependencies.pnpm}`)
+ })
++
++it('pins the Intel Mac interpreter independently of newer platform runtimes', () => {
++  expect(primaryRuntimeNodeVersion('mac-x64')).toBe('22.23.3')
++  expect(primaryRuntimeNodeVersion('mac-arm64')).toBe(lock.nodeVersion)
++  expect(primaryRuntimeNodeVersion('win-x64')).toBe(lock.nodeVersion)
++  const changedDefault = structuredClone(lock)
++  changedDefault.nodeVersion = '26.0.0'
++  expect(primaryRuntimePayloadDigest('mac-x64', changedDefault, '11.7.0'))
++    .toBe(primaryRuntimePayloadDigest('mac-x64', lock, '11.7.0'))
++  const changedIntel = structuredClone(lock)
++  changedIntel.targets['mac-x64'].nodeVersion = '22.23.4'
++  expect(primaryRuntimePayloadDigest('mac-x64', changedIntel, '11.7.0'))
++    .not.toBe(primaryRuntimePayloadDigest('mac-x64', lock, '11.7.0'))
++  expect(primaryRuntimePayloadDigest('mac-arm64', changedIntel, '11.7.0'))
++    .toBe(primaryRuntimePayloadDigest('mac-arm64', lock, '11.7.0'))
++})
+diff --git a/scripts/primary-runtime/prepare.ts b/scripts/primary-runtime/prepare.ts
+index a156a75..1c2fdca 100644
+--- a/scripts/primary-runtime/prepare.ts
++++ b/scripts/primary-runtime/prepare.ts
+@@ -40,6 +40,17 @@ async function pythonArchive(target: keyof typeof lock.targets, cache: string):
+   return downloadPrimaryRuntimeAsset(`https://github.com/astral-sh/python-build-standalone/releases/download/${lock.pythonRelease}/${encodeURIComponent(filename)}`, artifact.pythonSha256, cache)
+ }
+ 
++/**
++ * Select the interpreter version pinned for a target, or the shared default.
++ * @param target - Runtime target whose Node archive is installed.
++ * @param runtimeLock - Locked interpreter inputs.
++ * @returns The version used by download URLs, manifests and payload identity.
++ */
++export function primaryRuntimeNodeVersion(target: keyof typeof lock.targets, runtimeLock: typeof lock = lock): string {
++  const artifact = runtimeLock.targets[target]
++  return 'nodeVersion' in artifact ? artifact.nodeVersion : runtimeLock.nodeVersion
++}
++
+ /**
+  * Identify the inputs that assemble one target's payload, excluding unrelated target locks.
+  * @param target - Runtime target whose archives are installed.
+@@ -50,7 +61,8 @@ async function pythonArchive(target: keyof typeof lock.targets, cache: string):
+ export function primaryRuntimePayloadDigest(
+   target: keyof typeof lock.targets, runtimeLock: typeof lock, pnpmVersion: string | undefined,
+ ): string {
+-  const { pythonVersion, pythonRelease, nodeVersion, wheels, pythonPackages } = runtimeLock
++  const { pythonVersion, pythonRelease, wheels, pythonPackages } = runtimeLock
++  const nodeVersion = primaryRuntimeNodeVersion(target, runtimeLock)
+   // Identity preserves key order within the selected target, wheel records and distribution map, plus wheel-entry order.
+   // Bump format when extraction or assembly changes payload bytes without changing locked inputs.
+   return createHash('sha256').update(JSON.stringify({
+@@ -114,6 +126,7 @@ export async function preparePrimaryRuntime(options: PreparePrimaryRuntimeOption
+   const { target } = options
+   const paths = { runtime: resolve(options.output), downloads: resolve(options.cache) }
+   const artifact = lock.targets[target]
++  const nodeVersion = primaryRuntimeNodeVersion(target)
+   mkdirSync(paths.runtime, { recursive: true })
+   mkdirSync(paths.downloads, { recursive: true })
+   const staging = mkdtempSync(join(tmpdir(), 'dsh-primary-'))
+@@ -123,8 +136,8 @@ export async function preparePrimaryRuntime(options: PreparePrimaryRuntimeOption
+     mkdirSync(dependencies, { recursive: true })
+     let pnpmVersion: string | undefined
+     if (!options.pythonOnly) {
+-      const nodeFilename = `node-v${lock.nodeVersion}-${artifact.nodeArchive}`
+-      const nodeArchive = await downloadPrimaryRuntimeAsset(`https://nodejs.org/dist/v${lock.nodeVersion}/${nodeFilename}`, artifact.nodeSha256, paths.downloads)
++      const nodeFilename = `node-v${nodeVersion}-${artifact.nodeArchive}`
++      const nodeArchive = await downloadPrimaryRuntimeAsset(`https://nodejs.org/dist/v${nodeVersion}/${nodeFilename}`, artifact.nodeSha256, paths.downloads)
+       const unpackedNode = join(staging, 'node')
+       mkdirSync(unpackedNode)
+       if (target === 'win-x64') await extractZip(nodeArchive, { dir: unpackedNode })
+@@ -148,7 +161,7 @@ export async function preparePrimaryRuntime(options: PreparePrimaryRuntimeOption
+       arch: target.endsWith('-arm64') ? 'arm64' : 'x64',
+       payloadDigest: primaryRuntimePayloadDigest(target, lock, pnpmVersion),
+       python: lock.pythonVersion,
+-      ...(pnpmVersion === undefined ? {} : { node: lock.nodeVersion, pnpm: pnpmVersion }),
++      ...(pnpmVersion === undefined ? {} : { node: nodeVersion, pnpm: pnpmVersion }),
+       pythonPackages: lock.pythonPackages,
+     }
+     const entries = workspaceDependencyPaths(output, manifest)
+diff --git a/Start-Intel-Monterey.command b/Start-Intel-Monterey.command
+new file mode 100755
+index 0000000..f7b61e1
+--- /dev/null
++++ b/Start-Intel-Monterey.command
+@@ -0,0 +1,27 @@
++#!/bin/bash
++# Build and launch this source-linked desktop client on an Intel Mac.
++set -euo pipefail
++cd "$(dirname "$0")"
++fail() { printf '\n错误：%s\n' "$*" >&2; exit 1; }
++trap 'printf "\n启动未完成。请保留上面的错误输出；不会继续执行后续步骤。\n" >&2' ERR
++[[ "$(uname -s)" == Darwin ]] || fail '此启动器仅支持 macOS。'
++[[ "$(uname -m)" == x86_64 ]] || fail '此版本面向 Intel Mac，请使用原生 x64 终端和 Node.js。'
++OS_VERSION="$(sw_vers -productVersion)"
++[[ "${OS_VERSION%%.*}" -ge 12 ]] || fail '需要 macOS 12 或更高版本。'
++command -v node >/dev/null || fail '请先安装官方 Node.js 22.23.3 x64 完整发行版（包含开发头文件）。不要安装 Node.js 24。'
++node -e 'if(process.arch!=="x64" || process.versions.node.split(".")[0]!=="22" || Number(process.versions.node.split(".")[1])<19)process.exit(1)' || fail '需要 x64 Node.js 22.19 或更新的 22.x；推荐 22.23.3。'
++command -v pnpm >/dev/null || fail '请先准备 pnpm 11.7.0，然后重新启动。'
++[[ "$(pnpm --version)" == 11.7.0 ]] || fail '此源码锁定 pnpm 11.7.0，请切换到该版本。'
++xcode-select -p >/dev/null 2>&1 || fail '缺少 Xcode Command Line Tools。请先在终端运行 xcode-select --install 并完成安装。'
++command -v cc >/dev/null || fail '找不到 C 编译器，请检查 Xcode Command Line Tools。'
++node -e 'const fs=require("fs"),p=require("path");if(!fs.existsSync(p.resolve(p.dirname(process.execPath),"../include/node/node_api.h")))process.exit(1)' || fail 'Node.js 安装缺少 include/node/node_api.h；请使用官方完整发行版。'
++printf '\n正在安装项目依赖并编译桌面客户端，首次运行需要下载依赖和运行环境。\n'
++pnpm install --frozen-lockfile
++if [[ ! -e .git && -f SOURCE_REVISION ]]; then
++  export DSH_CLIENT_COMMIT_HASH="$(cat SOURCE_REVISION)"
++fi
++export DSH_DESKTOP_TARGET_PLATFORM=darwin
++export DSH_DESKTOP_TARGET_ARCH=x64
++export MACOSX_DEPLOYMENT_TARGET=12.0
++export DSH_DESKTOP_OPEN_DEVTOOLS=0
++pnpm run dev:desktop

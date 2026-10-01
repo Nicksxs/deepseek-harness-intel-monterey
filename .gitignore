@@ -1,0 +1,13 @@
+/deepseek-harness-intel/
+/.harness-setup.*/
+/node_modules/
+*.log
+*.tar.gz
+*.zip
+.DS_Store
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx

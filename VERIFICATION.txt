@@ -1,0 +1,59 @@
+Verification record — Intel Monterey source adaptation
+Date: 2026-10-01
+Upstream: https://github.com/deepseek-ai/deepseek-harness
+Base commit: 639ed015397290b3745d163aafe02ffee4aa3f84
+Target: Intel x86_64 MacBook Pro, macOS 12.6.6 (21G646)
+Verification host: Linux x86_64, Node 24.19.0; package manager 11.7.0
+
+PASSED
+- pnpm 11.7.0 install --frozen-lockfile (all 339 workspace projects).
+- pnpm exec vitest run scripts/primary-runtime/prepare.spec.ts apps/desktop/tests/development-app.spec.ts apps/desktop/tests/package-target.spec.ts
+  Result: 3 files, 30 tests passed.
+- node --max-old-space-size=4096 node_modules/typescript/bin/tsc -b tsconfig.host.json
+  Result: exit 0. Includes Desktop source/scripts against Electron 43 types.
+  Initial default-heap attempt exhausted 2GB; retry uses the upstream build's 4GB setting.
+- node --import tsx scripts/run-oxlint.ts apps/desktop/scripts/dev.ts apps/desktop/scripts/development-app.ts apps/desktop/tests/development-app.spec.ts scripts/primary-runtime/prepare.ts scripts/primary-runtime/prepare.spec.ts
+- node --import tsx scripts/verify-export-jsdoc.ts
+- node --import tsx scripts/verify-translation-pairing.ts apps/desktop/README.md
+- node --import tsx scripts/verify-md-links.ts (2304 files; all relative links/fragments resolve)
+- bash -n Start-Intel-Monterey.command
+- Launcher test with mock Intel Monterey tooling: calls frozen install and desktop launch with darwin/x64 and DevTools disabled; rejects wrong pnpm version.
+- Actual Linux launcher rejection before dependency installation.
+- git diff --check
+- git apply --reverse --check intel-monterey.patch
+- Source ZIP CRC verification; no node_modules or .git directories packaged.
+
+BLOCKED / NOT VERIFIED
+- Full pnpm run build: the cloud sandbox rejects tsx's local IPC listener with EPERM, including an escalation retry. The full native/bundle/Web build did not complete. Direct Host TypeScript compilation passed separately; it is not a full build.
+- Full aggregate lint, doc-sync, client TypeScript, UI/E2E and installed-artifact tests were not completed.
+- No macOS build host is available. No Intel .app/DMG has been built or run on macOS 12.6.6, signed for distribution, notarized or installed.
+- Electron UI, primary Python binary, LibreOffice binaries, native modules, browser sign-in and cold-start integration need real Monterey validation. Unit tests only verify launcher serialization and target selection.
+- The generated development .app remains dependent on the checkout and prepared dependencies, and retains upstream local debugging ports. It is not a portable production installer.
+
+WHY THESE CHANGES
+- Electron 44 removed macOS12 support; this variant pins 43.7.7.
+  https://www.electronjs.org/blog/electron-44-0
+- Standalone Node24 prebuilt macOS binaries require macOS13.5; mac-x64 primary runtime pins22.23.3 instead. Other standalone targets keep24.21.0.
+  https://nodejs.org/en/blog/migrations/v22-to-v24
+- Node22 macOS x64 build floor is11.0; the repository requires22.19+.
+  https://github.com/nodejs/node/blob/v22.x/BUILDING.md
+- Node22.23.3 darwin-x64 SHA256 verified against official SHASUMS256.txt:
+  8a677b0219178efd6eb0e475457c4afb452b521a92f6e67845a73bd85727f2a8
+  https://nodejs.org/dist/v22.23.3/SHASUMS256.txt
+
+No remote push, publication, account setup, signing credential entry, Gatekeeper change or external deployment was performed.
+
+BOOTSTRAP DELIVERY VALIDATION
+The attachment is a small bootstrap ZIP instead of the full source ZIP.
+- Downloaded exact official GitHub commit tar.gz and pinned SHA256 bbc09e888e1df3aa37be049abdb7720951e76442d21e5432365d87a465d628f1.
+- Extracted that actual archive; git apply --check and git apply passed with the included patch.
+- Verified resulting desktop dependency Electron43.7.7; patched launcher passes bash -n.
+- Bootstrap test used the real downloaded archive, real hash/extraction/patch operations, and mocked Mac/platform/build tools. Verified SOURCE_REVISION creation, frozen dependency-install call and desktop-launch call.
+- Pre-existing destination is refused without overwrite.
+- Corrupted source archive is rejected before extraction/launch and temporary files are cleaned up.
+- No actual macOS runtime test was performed; earlier limitations still apply.
+
+PUBLIC ADAPTER REPOSITORY VALIDATION
+- Bootstrap isolates Git discovery from the adapter repository; parent .git cannot redirect patch application. Explicit Git-directory overrides are cleared in the bootstrap process.
+- Added four repeatable Python stdlib tests: patched source preparation inside a Git clone (including spaces in paths), no overwrite, bad archive rejection/cleanup, and unsupported-platform rejection. All passed.
+- Retained upstream MIT license notice and linked the original exact-revision third-party notices. No third-party binary is bundled.
