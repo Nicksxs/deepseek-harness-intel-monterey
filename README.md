@@ -44,6 +44,20 @@ deepseek-harness-intel/apps/desktop/.desktop-build/development/Harness Dev.app
 
 这是依赖源码的开发版 `.app`。不要单独复制 `.app`，或移动、删除源码目录、node_modules和运行环境。首次使用在界面中配置账号或 API Key；不要将密钥提交到仓库。更多说明见[使用说明](使用说明.txt)。
 
+## 已下载源码的启动顺序修复
+
+若旧版在 `tsx scripts/dev.ts` 报 `ERR_MODULE_NOT_FOUND`，指向 `@deepseek-ai/dsh-app-boot/lib/index.js`，原因是桌面开发启动器在执行自己的构建步骤之前，就静态导入了尚未生成的工作区产物。启动脚本现在先完成一次根目录 `pnpm run build`，再用 `pnpm run start:desktop` 跳过重复构建并启动。构建失败时不会继续启动。
+
+无需重新下载源码。更新本适配仓库后，可只修复已有的启动脚本：
+
+```sh
+node ./repair-existing-source.mjs "/path/to/deepseek-harness-intel"
+```
+
+修复工具核对固定源码版本，只替换已知旧脚本的最后一条启动命令，保留其他内容与执行权限，并创建 `.before-build-order-fix` 备份；未知版本、不同启动命令或已有备份会停止，不覆盖。重复修复已完成的脚本不会产生改动。它不安装依赖、不启动应用。随后在原源码目录运行 `bash ./Start-Intel-Monterey.command`。
+
+安装阶段列出的其他CPU或操作系统工作区的 `Unsupported platform` 警告，不等同于这次缺失构建产物错误。Node22.23.2满足本适配要求的22.19+，无需为了该错误升级到22.23.3。
+
 ## 固定来源与校验
 
 - 上游：[deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)

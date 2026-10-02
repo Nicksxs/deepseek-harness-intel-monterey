@@ -63,3 +63,12 @@ PUBLIC ADAPTER REPOSITORY VALIDATION
 - Audited bootstrap and generated Start-Intel-Monterey.command: no other unbraced named variable immediately followed by non-ASCII text was found.
 - Three no-download shell tests pass: syntax for both scripts, ambiguous-variable static regression, and the missing-curl branch under C and available UTF-8 locales. The static regression was also run against the original script and failed as intended.
 - Local shell validation uses Linux /bin/bash, not a real macOS shell. The CI matrix now includes macOS and explicitly tests /bin/bash; remote results must be checked separately.
+
+2026-10-02 COLD SOURCE BUILD ORDER FIX
+- Reproduced the user's exact missing dsh-app-boot/lib/index.js error on Linux by loading dev.ts from apps/desktop in a source tree without runtime bundles.
+- Traced static imports dev.ts -> development-project.ts -> project-manager.ts -> dsh-app-boot. These execute before dev.ts main() can build. prepare-primary-runtime.ts also imports workspace runtime packages eagerly.
+- Generated Start launcher now runs the root build once, then start:desktop (upstream --skip-build), instead of importing dev.ts before the first build. Root build includes native addon, Host/Client bundles, Desktop bundle and Web assets.
+- Five real-archive/bootstrap tests pass with mocked Mac/build tools, including ordered install/build/start calls and refusal to launch after a failed build.
+- The original wrapper was tested against the new checks: both launch-order and build-failure regressions fail as expected; the fixed patch passes.
+- Three no-download shell guard tests and four existing-source repair tests pass. Repair preserves unrelated script text and executable mode, backs up once, is idempotent, and refuses mismatched inputs/existing backups.
+- Full Mac build/runtime remains unverified. This fix changes launcher ordering only; no full project rebuild or dependency reinstall was performed for this regression check.

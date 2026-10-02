@@ -20,6 +20,7 @@ jobs:
         run: |
           /bin/bash --version
           python3 tests/test_shell_guards.py
+          python3 tests/test_repair.py
       - name: Download pinned upstream fixture
         run: |
           curl --fail --location --proto '=https' --tlsv1.2 --retry 2 --max-time 180 \

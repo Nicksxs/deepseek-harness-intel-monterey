@@ -47,3 +47,9 @@ https://www.electronjs.org/blog/electron-44-0
 https://nodejs.org/en/blog/migrations/v22-to-v24
 https://github.com/nodejs/node/blob/v22.x/BUILDING.md
 https://github.com/deepseek-ai/deepseek-harness
+
+已有源码报 dsh-app-boot/lib/index.js 缺失时
+这属于构建顺序问题：旧开发启动器提前导入了尚未构建的模块。无需重新下载源码。使用新适配包里的修复工具：
+node ./repair-existing-source.mjs "已有的 deepseek-harness-intel 目录"
+修复会备份原启动脚本，只调整已知启动命令；然后在原源码目录运行 bash ./Start-Intel-Monterey.command。
+新的启动顺序为先 pnpm run build，再 pnpm run start:desktop；前一步失败不会启动客户端。

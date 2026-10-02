@@ -64,8 +64,15 @@ class BootstrapTests(unittest.TestCase):
         self.assertEqual((source / 'SOURCE_REVISION').read_text().strip(), REVISION)
         self.assertIn('43.7.7', (source / 'apps/desktop/package.json').read_text())
         self.assertTrue((source / 'Start-Intel-Monterey.command').exists())
-        self.assertEqual(self.log.read_text().splitlines(), ['install --frozen-lockfile', 'run dev:desktop'])
+        self.assertEqual(self.log.read_text().splitlines(), ['install --frozen-lockfile', 'run build', 'run start:desktop'])
         self.assertFalse(list(self.repo.glob('.harness-setup.*')))
+
+    def test_failed_build_never_starts_desktop(self):
+        self.write_tool('pnpm', 'if [ "$1" = --version ]; then echo 11.7.0; else echo "$*" >> "$MOCK_LOG"; [ "$*" != "run build" ] || exit 42; fi')
+        result = self.run_setup()
+        self.assertEqual(result.returncode, 42, result.stderr)
+        self.assertEqual(self.log.read_text().splitlines(), ['install --frozen-lockfile', 'run build'])
+        self.assertTrue((self.repo / 'deepseek-harness-intel/SOURCE_REVISION').exists())
 
     def test_existing_directory_is_not_overwritten(self):
         source = self.repo / 'deepseek-harness-intel'

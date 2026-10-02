@@ -271,10 +271,10 @@ index a156a75..1c2fdca 100644
      const entries = workspaceDependencyPaths(output, manifest)
 diff --git a/Start-Intel-Monterey.command b/Start-Intel-Monterey.command
 new file mode 100755
-index 0000000..f7b61e1
+index 0000000..123c11f
 --- /dev/null
 +++ b/Start-Intel-Monterey.command
-@@ -0,0 +1,27 @@
+@@ -0,0 +1,29 @@
 +#!/bin/bash
 +# Build and launch this source-linked desktop client on an Intel Mac.
 +set -euo pipefail
@@ -301,4 +301,6 @@ index 0000000..f7b61e1
 +export DSH_DESKTOP_TARGET_ARCH=x64
 +export MACOSX_DEPLOYMENT_TARGET=12.0
 +export DSH_DESKTOP_OPEN_DEVTOOLS=0
-+pnpm run dev:desktop
++# Build workspace exports before loading the Desktop launcher.
++pnpm run build
++pnpm run start:desktop
