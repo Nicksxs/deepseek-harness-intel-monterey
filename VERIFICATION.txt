@@ -57,3 +57,9 @@ PUBLIC ADAPTER REPOSITORY VALIDATION
 - Bootstrap isolates Git discovery from the adapter repository; parent .git cannot redirect patch application. Explicit Git-directory overrides are cleared in the bootstrap process.
 - Added four repeatable Python stdlib tests: patched source preparation inside a Git clone (including spaces in paths), no overwrite, bad archive rejection/cleanup, and unsupported-platform rejection. All passed.
 - Retained upstream MIT license notice and linked the original exact-revision third-party notices. No third-party binary is bundled.
+
+2026-10-02 SHELL GUARD FIX
+- Braced the missing-prerequisite variable before Chinese punctuation (${tool}) so Bash does not interpret locale-dependent bytes as part of the variable name under set -u.
+- Audited bootstrap and generated Start-Intel-Monterey.command: no other unbraced named variable immediately followed by non-ASCII text was found.
+- Three no-download shell tests pass: syntax for both scripts, ambiguous-variable static regression, and the missing-curl branch under C and available UTF-8 locales. The static regression was also run against the original script and failed as intended.
+- Local shell validation uses Linux /bin/bash, not a real macOS shell. The CI matrix now includes macOS and explicitly tests /bin/bash; remote results must be checked separately.

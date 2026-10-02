@@ -16,7 +16,7 @@ trap 'printf "\n操作未完成。请保留错误输出；校验失败时不会�
 [[ ! -e "$DEST" ]] || fail "目录已存在，不会覆盖。后续启动请运行：bash \"$DEST/Start-Intel-Monterey.command\"；若上次准备失败，请检查后自行移走旧目录。"
 [[ -f "$BASE/intel-monterey.patch" ]] || fail '找不到随包附带的 intel-monterey.patch，请完整解压 ZIP。'
 for tool in curl shasum tar git node pnpm; do
-  command -v "$tool" >/dev/null || fail "缺少 $tool，请先按使用说明准备工具。"
+  command -v "$tool" >/dev/null || fail "缺少 ${tool}，请先按使用说明准备工具。"
 done
 xcode-select -p >/dev/null 2>&1 || fail '请先完成 Xcode Command Line Tools 安装：xcode-select --install'
 node -e 'if(process.arch!=="x64" || process.versions.node.split(".")[0]!=="22" || Number(process.versions.node.split(".")[1])<19)process.exit(1)' || fail '需要 x64 Node.js 22.19 或更新的 22.x；推荐22.23.3。'

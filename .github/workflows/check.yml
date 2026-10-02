@@ -7,12 +7,19 @@ permissions:
   contents: read
 jobs:
   bootstrap:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Check shell syntax
-        run: bash -n Setup-Intel-Monterey.command
+        run: /bin/bash -n Setup-Intel-Monterey.command
+      - name: Test default shell and prerequisite errors
+        run: |
+          /bin/bash --version
+          python3 tests/test_shell_guards.py
       - name: Download pinned upstream fixture
         run: |
           curl --fail --location --proto '=https' --tlsv1.2 --retry 2 --max-time 180 \

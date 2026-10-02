@@ -80,7 +80,7 @@ deepseek-harness-intel/apps/desktop/.desktop-build/development/Harness Dev.app
 
 ## 开发与贡献
 
-运行 `bash -n Setup-Intel-Monterey.command` 检查语法。可将经校验的官方归档路径传给测试程序：
+运行 `/bin/bash -n Setup-Intel-Monterey.command` 检查语法，运行 `python3 tests/test_shell_guards.py` 测试缺少工具的错误提示和变量边界（无需下载源码）。测试使用 `/bin/bash`，以覆盖 macOS 系统自带的 Bash，而不是其他已安装版本。可将经校验的官方归档路径传给测试程序：
 
 ```sh
 python3 tests/test_bootstrap.py /path/to/639ed015397290b3745d163aafe02ffee4aa3f84.tar.gz
